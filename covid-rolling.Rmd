@@ -1,0 +1,26 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is a draft attempt to explore 7-day rolling averages of COVID cases, but **It is unfinished**.
+
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+rolling <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/us-counties-recent.csv")
+```
+
+```{r}
+rolling %>% glimpse()
+```
+
+```{r}
+rolling %>% 
+  filter(str_detect(state, "Alabama"))
+```
+

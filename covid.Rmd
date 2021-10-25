@@ -1,0 +1,226 @@
+---
+title: "COVID deaths per population"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    df_print: paged
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") })
+---
+
+This lesson uses COVID case data from the New York Times and Kyle Walker's [tidycensus](https://walker-data.com/tidycensus/index.html) package to make a map of COVID deaths per popluation for Texas counties. See [Reporting with Data in R] for more information.
+
+As of this writing, the [RWDIR chapter for this is here](https://utdata.github.io/rwdir/census-more.html).
+
+## Setup
+
+```{r setup, echo=T, results='hide', message=F, warning=F}
+library(tidyverse)
+library(janitor)
+library(tidycensus)
+```
+
+## Import covid data
+
+The data is found [here](https://github.com/nytimes/covid-19-data).
+
+```{r import-covid}
+covid <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv") %>% 
+  clean_names()
+
+covid %>% head(10)
+```
+
+Get most recent Texas numbers.
+
+There is an "Unknown" county, which we remove.
+
+```{r tx-covid}
+tx_covid <- covid %>% 
+  filter(state == "Texas") %>% 
+  group_by(county) %>% 
+  slice_max(date) %>% 
+  select(-state) %>% 
+  filter(county != "Unknown")
+
+tx_covid
+```
+
+## Get population data
+
+First we have to figure out the variable we want. We are using 2020 Decennial data from the redistricting file. This is [the table](https://data.census.gov/cedsci/table?q=P1&tid=DECENNIALPL2020.P1) from data.census.gov that has the population info.
+
+Download the variables from the "pl" table:
+
+```{r load-vars}
+vpl <- load_variables(2020, "pl", cache = T)
+# view is commented out
+# View(vpl)
+```
+
+The total population variable is: P1_001N
+
+Test the variable against the portal:
+
+```{r test-var}
+get_decennial(
+  year = 2020,
+  variables = c(total_pop = "P1_001N"),
+  geography = "state",
+  state = "AL"
+)
+```
+
+Now let's get Texas by county:
+
+```{r tx-pops}
+tx_pop <- get_decennial(
+  year = 2020,
+  variables = c(total_pop = "P1_001N"),
+  geography = "county",
+  state = "TX",
+  geometry = TRUE # adds shapes
+) %>% clean_names()
+
+tx_pop
+```
+### Largest counties
+
+Just a test.
+
+```{r}
+tx_pop %>%
+  arrange(value %>% desc())
+```
+
+## Join the data
+
+We use an inner join to bring the covid data into the population data.
+
+> You have to start with the population data for the geometry to work.
+
+```{r}
+tx_joined <- tx_pop %>% 
+  # this is the join line
+  inner_join(tx_covid, by = c("geoid" = "fips"))
+
+# peek at the result
+tx_joined
+
+```
+
+### Clean up the columns
+
+Just so I can see the columns
+
+```{r join-peek}
+tx_joined %>% glimpse()
+```
+
+Removing columns and renaming value.
+
+```{r join-reselect}
+tx_selected <- tx_joined %>% 
+  select(-c(date, name, variable)) %>% 
+  rename(
+    total_pop = value
+  )
+
+tx_selected
+```
+
+### Creates our rate column
+
+Creating cases/deaths per 1,000 population.
+
+```{r create-rates}
+tx_rates <- tx_selected %>% 
+  mutate(
+    cases_per_pop = (cases / (total_pop / 1000)) %>% round(),
+    deaths_per_pop = (deaths / (total_pop / 1000)) %>% round(),
+  )
+
+tx_rates
+```
+
+## Highest rates
+
+###  Counties with highest case rates
+
+```{r top-cases}
+tx_rates %>% 
+  arrange(cases_per_pop %>% desc()) %>% 
+  select(county, total_pop, cases, cases_per_pop,) %>% 
+  head(10)
+
+```
+
+### Counties with highest deaths rates
+
+```{r top-deaths}
+tx_rates %>% 
+  arrange(deaths_per_pop %>% desc()) %>% 
+  select(county, total_pop, deaths, deaths_per_pop) %>% 
+  head(10)
+```
+
+## Map the rates
+
+### Cases per 1000
+
+
+```{r plot-cases}
+ggplot(tx_rates) +
+  geom_sf(aes(fill = cases_per_pop), color = "white", size = .2) +
+  theme_void() +
+  labs(
+    title = "COVID cases per 1000 in Texas counties",
+    caption = "Source: NYTimes, Census Bureau/2020 Decennial"
+  ) +
+  scale_fill_distiller(
+    palette = "Greens",
+    direction = 1,
+    name = "Cases per 1000"
+  )
+
+```
+
+### Deaths per 1000
+
+```{r plot-deaths}
+ggplot(tx_rates) +
+  geom_sf(aes(fill = deaths_per_pop), color = "white", size = .1) +
+  theme_void() +
+  labs(
+    title = "COVID deaths per 1,000 people in Texas counties",
+    caption = "Source: NYTimes, Census Bureau/2020 Decennial"
+  ) +
+  scale_fill_distiller(
+    palette = "Blues",
+    direction = 1,
+    name = "Deaths per\n1,000 population\n"
+  )
+
+```
+
+## TFailed join
+
+You have to start with the tibble that has the geometry. This one tries to start with the covid data and the result doesn't work. The error is:
+
+```r
+Error: stat_sf requires the following missing aesthetics: geometry Run `rlang::last_error()` to see where the error occurred.
+```
+
+The code is commented since it doesn't work.
+
+```{r join-fail}
+# tx_joined_flop <- tx_covid %>%
+#   inner_join(tx_pop, by = c("fips" = "geoid"))
+# 
+# tx_joined_flop %>%
+#   ggplot() +
+#   geom_sf()
+```
+

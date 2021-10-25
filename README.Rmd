@@ -1,0 +1,22 @@
+---
+output:
+  html_document:
+    df_print: paged
+knit: (function(inputFile, encoding) { rmarkdown::render(
+    inputFile,
+    encoding = encoding,
+    output_dir = "docs",
+    output_file='index.html'
+  ) })
+---
+
+This repo is a collection of lessons from the Spring 2021 version [Reporting with Data in R](https://utdata.github.io/rwdir/). The book is due to be reworked, so chapter names and numbers may change.
+
+It is also an example used for the 2021 Center for Health Journalism Data Fellowship.
+
+## Published notebooks
+
+- Using Tidycensus to find broadband availability in Texas
+- COVID-19 Deaths per population by Texas counties
+
+Running these notebooks requires an Census API Key, which is outlined in the book.

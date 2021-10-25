@@ -1,0 +1,117 @@
+---
+title: "Broadband access by Texas counties"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    df_print: paged
+knit: (function(inputFile, encoding) { rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") })
+---
+
+This lesson notes how to use Kyle Walker's [tidycensus](https://walker-data.com/tidycensus/) package to make maps using American Community Survey data via the Census Bureau's API. See [Reporting with Data in R](https://utdata.github.io/rwdir/) for more information.
+
+As of this writing, the [RWDIR chapter is here](https://utdata.github.io/rwdir/census-intro.html).
+
+
+```{r setup, echo=T, results='hide', message=F, warning=F}
+library(tidyverse)
+library(tidycensus)
+library(scales)
+```
+
+
+## Find the data in the portal
+
+The first challenge is to find the variable we need: Broadband any type.
+
+[This is the table](https://data.census.gov/cedsci/table?tid=ACSST5Y2019.S2801).
+
+```{r get-variable}
+v19_subject <- load_variables(2019, "acs5/subject", cache = TRUE)
+
+# View(v19_subject)
+```
+
+
+The variable we need: S2801_C02_014
+
+We'll check these numbers to make sure we have the right variables.
+
+### Get our data from tidycensus
+
+Percetage of housholds with broadband
+
+```{r test-variable}
+get_acs(
+  year = 2019,
+  variables = c(broadband = "S2801_C02_014"),
+  geography = "us",
+)
+```
+
+Now that we've confirmed, get for counties in Texas.
+
+```{r bb-counties}
+tx_broadband <- get_acs(
+  year = 2019,
+  variables = "S2801_C02_014",
+  geography = "county",
+  state = "TX"
+)
+
+tx_broadband
+```
+
+### Counties with lowest percentage
+
+```{r bb-lowest}
+tx_broadband %>% 
+  arrange(estimate) %>% 
+  head()
+```
+
+### Counties with highest percentage
+
+```{r bb-highest}
+tx_broadband %>% 
+  arrange(estimate %>% desc()) %>% 
+  head()
+```
+
+## Make the map
+
+The same get_acs call, but we are adding geometry.
+
+```{r bb-counties-geo}
+broadband_tx_geo <- get_acs(
+  year = 2019,
+  variables = "S2801_C02_014",
+  geography = "county",
+  state = "TX",
+  geometry = TRUE
+)
+
+broadband_tx_geo
+```
+
+## Map broadband
+
+```{r bb-plot}
+ggplot(broadband_tx_geo) +
+  geom_sf(aes(fill = estimate), color = "white", size = .1) +
+  theme_void() +
+  scale_fill_distiller(
+    palette = "Blues",
+    direction = 1,
+    name = "% Broadband"
+  ) +
+  labs(
+    title = "Broadband connectivity",
+    subtitle = "A look at percentage of households with broadband of any type in Texas counties.",
+    caption = "Source: American Community Survey/2019 5-year survey"
+  )
+```
+
+

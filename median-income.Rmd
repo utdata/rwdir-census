@@ -1,0 +1,104 @@
+---
+title: "Median income"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(tidycensus)
+library(scales)
+```
+
+
+The [table](https://data.census.gov/cedsci/table?tid=ACSST5Y2019.S1903)
+
+
+```{r}
+v19_subject <- load_variables(2019, "acs5/subject")
+
+View(v19_subject)
+```
+
+I had to filter for:
+
+- the table id in **name**
+- the column name "Median income (dollars)" in **label**.
+
+The values we want is: S1903_C01_001
+
+```{r}
+get_acs(
+  year = 2019,
+  variables = "S1903_C03_001",
+  geography = "us"
+)
+```
+
+Now that we have confirmed it, let's fetch it by counties in Texas
+
+
+```{r}
+tx_median <- get_acs(
+  year = 2019,
+  variables = "S1903_C03_001",
+  geography = "county",
+  state = "TX",
+)
+
+tx_median
+```
+
+Lowest
+
+```{r}
+tx_median %>% 
+  arrange(estimate) %>% 
+  head(10)
+```
+
+Highest
+
+```{r}
+tx_median %>% 
+  arrange(desc(estimate)) %>% 
+  head(10)
+```
+
+### Now to plot it
+
+First add geometry to the data
+
+```{r}
+tx_median_geo <- get_acs(
+  year = 2019,
+  variables = "S1903_C03_001",
+  geography = "county",
+  state = "TX",
+  # add geometry
+  geometry = TRUE
+)
+
+tx_median_geo
+```
+
+
+```{r}
+ggplot(tx_median_geo) + 
+  geom_sf(aes(fill = estimate)) +
+  theme_void() +
+  labs(
+    title = "2019 Median Income in Texas counties",
+    caption = "Source: Census Bureau/ACS 5-year 2019"
+  ) +
+  scale_fill_distiller(
+    palette = "Greens",
+    direction = 1,
+    name = "Median income",
+    label = dollar
+  )
+```
+
+
+
+
+

@@ -1,0 +1,138 @@
+---
+title: "Census zips practice"
+output: html_notebook
+---
+
+This is an **abandoned effort** to gets populations of Travis (or some geo) by zip code that could be used later with MixBev lesson.
+
+HUD ZIP [crosswalk file](https://www.huduser.gov/portal/datasets/usps_crosswalk.html).
+
+```{r setup, echo=T, results='hide', message=F, warning=F}
+library(tidyverse)
+library(tidycensus)
+library(DT)
+library(readxl)
+library(janitor)
+library(scales)
+```
+
+## Steps
+
+- find zips in area
+  - decide how to cut them: 
+- get pops by zip
+- filter pops by area zips
+- map it
+
+
+```{r}
+zips_raw <- read_excel(
+  "data-raw/ZIP_COUNTY_092021.xlsx",
+) %>% clean_names()
+
+zips <- zips_raw %>% 
+  mutate(
+    res_ratio = round(res_ratio, 3),
+    bus_ratio = round(bus_ratio, 3),
+    oth_ratio = round(oth_ratio, 3),
+    tot_ratio = round(tot_ratio, 3),
+  )
+
+zips %>% glimpse()
+```
+
+### Find our counties
+
+List of FIPS
+
+- Bastrop: 48021
+- Caldwell: 48055
+- Hays: 48209
+- Travis: 48453
+- Williamson: 48491
+
+
+```{r}
+fips_msa <- c("48021", "48055", "48209", "48453", "48491")
+fips_travis <- c("48453")
+fips_htw <- c("48209", "48453", "48491")
+
+zips_filtered <- zips %>% 
+  filter(
+    county %in% fips_travis,
+    bus_ratio > 0.33
+  ) %>% 
+  arrange(tot_ratio)
+
+zips_filtered
+```
+
+```{r}
+zips_selected <- zips_filtered %>% 
+  select(zip) %>% .$zip
+```
+
+
+## Get variables
+
+Total pop: B01001_001
+
+
+```{r}
+v19 <- load_variables(2019, "acs5/subject", cache = TRUE)
+
+```
+
+
+```{r}
+pop_zip <- get_acs(
+  year = 2019,
+  variables = "S0101_C01_001",
+  geography = "zcta",
+  state = "TX",
+  # geometry = T,
+) %>% clean_names()
+  
+pop_zip_geo <- get_acs(
+  year = 2019,
+  variables = "S0101_C01_001",
+  geography = "zcta",
+  state = "TX",
+  geometry = T,
+) %>% clean_names()
+ 
+pop_zip
+```
+
+```{r}
+pop_zip_filtered <- pop_zip_geo %>% 
+  filter(geoid %in% zips_selected)
+
+pop_zip_filtered %>% 
+  arrange(estimate %>% desc())
+```
+
+```{r}
+pop_zip_filtered %>% 
+  ggplot() +
+  geom_sf(aes(fill = estimate)) +
+  theme_void() +
+  theme(plot.margin = unit(c(10,10,10,10), "pt")) +
+  scale_fill_distiller(
+    # palette = "Greens",
+    direction = 1,
+    name = "Population",
+    label = comma
+  )
+```
+
+- This is [where I found to add the margin back](https://stackoverflow.com/questions/40407498/how-to-remove-margins-in-ggplot2-chart)
+
+
+
+
+
+
+
+
+
