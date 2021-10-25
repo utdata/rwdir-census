@@ -73,9 +73,9 @@ get_decennial(
 )
 ```
 
-Now let's get Texas by county:
+Now let's get Texas by county. The output is suppressed.
 
-```{r tx-pops}
+```{r tx-pops, echo=T, results='hide', message=F, warning=F}
 tx_pop <- get_decennial(
   year = 2020,
   variables = c(total_pop = "P1_001N"),
@@ -83,16 +83,6 @@ tx_pop <- get_decennial(
   state = "TX",
   geometry = TRUE # adds shapes
 ) %>% clean_names()
-
-tx_pop
-```
-### Largest counties
-
-Just a test.
-
-```{r}
-tx_pop %>%
-  arrange(value %>% desc())
 ```
 
 ## Join the data
@@ -106,18 +96,10 @@ tx_joined <- tx_pop %>%
   # this is the join line
   inner_join(tx_covid, by = c("geoid" = "fips"))
 
-# peek at the result
-tx_joined
-
+tx_joined %>% glimpse()
 ```
 
 ### Clean up the columns
-
-Just so I can see the columns
-
-```{r join-peek}
-tx_joined %>% glimpse()
-```
 
 Removing columns and renaming value.
 
@@ -128,7 +110,7 @@ tx_selected <- tx_joined %>%
     total_pop = value
   )
 
-tx_selected
+tx_selected %>% glimpse()
 ```
 
 ### Creates our rate column
@@ -142,7 +124,7 @@ tx_rates <- tx_selected %>%
     deaths_per_pop = (deaths / (total_pop / 1000)) %>% round(),
   )
 
-tx_rates
+tx_rates %>% glimpse()
 ```
 
 ## Highest rates
@@ -154,7 +136,6 @@ tx_rates %>%
   arrange(cases_per_pop %>% desc()) %>% 
   select(county, total_pop, cases, cases_per_pop,) %>% 
   head(10)
-
 ```
 
 ### Counties with highest deaths rates
@@ -205,7 +186,7 @@ ggplot(tx_rates) +
 
 ```
 
-## TFailed join
+## Failed join
 
 You have to start with the tibble that has the geometry. This one tries to start with the covid data and the result doesn't work. The error is:
 

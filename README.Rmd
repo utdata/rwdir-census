@@ -16,7 +16,7 @@ It is also an example used for the 2021 Center for Health Journalism Data Fellow
 
 ## Published notebooks
 
-- Using Tidycensus to find broadband availability in Texas
-- COVID-19 Deaths per population by Texas counties
+- U[sing Tidycensus to find broadband availability in Texas](https://utdata.github.io/rwdir-census/broadband.html)
+- [COVID-19 Deaths per population by Texas counties](https://utdata.github.io/rwdir-census/covid.html)
 
 Running these notebooks requires an Census API Key, which is outlined in the book.

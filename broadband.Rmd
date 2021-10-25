@@ -21,8 +21,9 @@ library(tidycensus)
 library(scales)
 ```
 
+## Get broadband census data
 
-## Find the data in the portal
+### Find the data in the portal
 
 The first challenge is to find the variable we need: Broadband any type.
 
@@ -82,9 +83,13 @@ tx_broadband %>%
 
 ## Make the map
 
+### Add the geometry
+
 The same get_acs call, but we are adding geometry.
 
-```{r bb-counties-geo}
+The output us suppressed.
+
+```{r bb-counties-geo, echo=T, results='hide', message=F, warning=F}
 broadband_tx_geo <- get_acs(
   year = 2019,
   variables = "S2801_C02_014",
@@ -93,10 +98,9 @@ broadband_tx_geo <- get_acs(
   geometry = TRUE
 )
 
-broadband_tx_geo
 ```
 
-## Map broadband
+### Plot the map
 
 ```{r bb-plot}
 ggplot(broadband_tx_geo) +
